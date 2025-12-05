@@ -167,7 +167,7 @@ target_include_directories(${TARGET_NAME} INTERFACE "$<INSTALL_INTERFACE:runtime
                                                     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
                                                     "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>")
 
-target_link_libraries(${TARGET_NAME} PUBLIC openvino::runtime PRIVATE openvino::threading nlohmann_json::nlohmann_json minja ${CMAKE_DL_LIBS})
+target_link_libraries(${TARGET_NAME} PUBLIC openvino::runtime PRIVATE "D:\\yina\\openvino\\bin\\intel64\\RelWithDebInfo\\openvino_intel_gpu_plugin.lib" openvino::threading nlohmann_json::nlohmann_json minja ${CMAKE_DL_LIBS})
 
 if(ENABLE_XGRAMMAR)
     target_link_libraries(${TARGET_NAME} PRIVATE xgrammar)
@@ -223,6 +223,11 @@ if(OpenVINODeveloperPackage_FOUND)
     # TODO: commit changes separately
     # ov_add_clang_format_target(${TARGET_NAME}_clang FOR_TARGETS ${TARGET_NAME})
 endif()
+
+get_property(INCLUDE_DIRS TARGET ${TARGET_NAME} PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
+
+# Print the include directories for the target
+message(STATUS "Include directories for ${TARGET_NAME}: ${INCLUDE_DIRS}")
 
 if(rpaths)
     set_target_properties(${TARGET_NAME} PROPERTIES INSTALL_RPATH "${rpaths}")

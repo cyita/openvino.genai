@@ -135,7 +135,17 @@ void ContinuousBatchingPipeline::ContinuousBatchingImpl::initialize_pipeline(
         filtered_properties.fork().erase("sampler_num_threads");   // do not use iterator sampler_num_threads_it because a forked container may not be the same container
     }
 
+    std::cout << "compile_model start..." << std::endl;
+    auto start_time = std::chrono::steady_clock::now();
+
     ov::CompiledModel compiled_model = utils::singleton_core().compile_model(model, device, *filtered_properties);
+
+    auto end_time = std::chrono::steady_clock::now();
+    auto duration = end_time - start_time;
+    auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+    std::cout << "compile_model end... time: " << duration_ms << " ms" << std::endl;
+    ov::serialize(compiled_model.get_runtime_model(), "D:\\yina\\ov_ops\\dumped_graph\\compiled.xml");
+
     std::vector<std::string> execution_devices = compiled_model.get_property(ov::execution_devices);
     const bool all_gpu_device =
         std::all_of(execution_devices.begin(), execution_devices.end(), [&](const std::string& device) {

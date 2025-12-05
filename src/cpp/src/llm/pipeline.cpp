@@ -214,6 +214,8 @@ ov::genai::LLMPipeline::LLMPipeline(
     const std::string& device,
     const ov::AnyMap& user_properties) :
     m_device(device) {
+
+    std::cout << "LLMPipeline" << std::endl;
     auto start_time = std::chrono::steady_clock::now();
 
     bool is_npu_requested = ov::genai::utils::is_npu_requested(device, user_properties);
@@ -223,6 +225,7 @@ ov::genai::LLMPipeline::LLMPipeline(
         m_pimpl = StatefulPipeline::create(models_path, device, properties);
     } else if (utils::explicitly_requires_paged_attention(user_properties)) {
         // If CB is invoked explicitly, create CB adapter as is and re-throw in case if internal issues
+        std::cout << "ContinuousBatchingAdapter" << std::endl;
         auto [device_properties, scheduler_config] = utils::extract_scheduler_config(properties, utils::get_latency_oriented_scheduler_config());
         m_pimpl = std::make_unique<ContinuousBatchingAdapter>(models_path, scheduler_config, device, device_properties);
     } else if (attention_backend == PA_BACKEND) {
@@ -231,6 +234,7 @@ ov::genai::LLMPipeline::LLMPipeline(
             // we need use CB only for x86 and arm64, as for other architectures like risc-v we can create Paged Attention based model
             // but cannot perform its inference later
 #if defined(OPENVINO_ARCH_X86_64) || defined(OPENVINO_ARCH_ARM64)
+            std::cout << "ContinuousBatchingAdapter 2" << std::endl;
             m_pimpl = std::make_unique<ContinuousBatchingAdapter>(models_path, utils::get_latency_oriented_scheduler_config(), device, properties);
 #endif
         } catch (ov::Exception&) {
@@ -241,6 +245,8 @@ ov::genai::LLMPipeline::LLMPipeline(
     if (m_pimpl == nullptr) {
         // FIXME: Switch to StatefulPipeline::create after resolving issues
         //        with GPU and CPU for StatefulSpeculativeLLMPipeline
+
+        std::cout << "StatefulLLMPipeline" << std::endl;
         m_pimpl = std::make_unique<StatefulLLMPipeline>(models_path, device, properties);
     }
 
