@@ -14,6 +14,7 @@
 #include "intel_gpu/op/placeholder.hpp"
 #include "intel_gpu/op/fully_connected.hpp"
 #include <ov_ops/rms.hpp>
+#include <ov_ops/rotary_positional_embeddings.hpp>
 
 #include "gguf_utils/building_blocks.hpp"
 
@@ -197,16 +198,31 @@ std::tuple<Output<ov::Node>, Output<ov::Node>, std::pair<Output<ov::Node>, Outpu
         sin_unsqueezed = cos_sin_cached.second;
     }
 
-    // Apply rotation
-    auto q_rot = std::make_shared<v1::Add>(
-        std::make_shared<v1::Multiply>(q, cos_unsqueezed),
-        std::make_shared<v1::Multiply>(rotate_half(q, head_size, hidden_dim), sin_unsqueezed)
-    );
+    op::internal::RoPE::Config config;
+    config.rotary_ndims = head_size;
 
-    auto k_rot = std::make_shared<v1::Add>(
-        std::make_shared<v1::Multiply>(k, cos_unsqueezed),
-        std::make_shared<v1::Multiply>(rotate_half(k, head_size, hidden_dim), sin_unsqueezed)
-    );
+    // Apply rotation
+    // auto q_rot = std::make_shared<v1::Add>(
+    //     std::make_shared<v1::Multiply>(q, cos_unsqueezed),
+    //     std::make_shared<v1::Multiply>(rotate_half(q, head_size, hidden_dim), sin_unsqueezed)
+    // );
+
+    // auto k_rot = std::make_shared<v1::Add>(
+    //     std::make_shared<v1::Multiply>(k, cos_unsqueezed),
+    //     std::make_shared<v1::Multiply>(rotate_half(k, head_size, hidden_dim), sin_unsqueezed)
+    // );
+
+    std::vector<Output<Node>> q_rope_args;
+    q_rope_args.push_back(q);
+    q_rope_args.push_back(cos_unsqueezed);
+    q_rope_args.push_back(sin_unsqueezed);
+    auto q_rot = std::make_shared<internal::RoPE>(q_rope_args, config);
+
+    std::vector<Output<Node>> k_rope_args;
+    k_rope_args.push_back(k);
+    k_rope_args.push_back(cos_unsqueezed);
+    k_rope_args.push_back(sin_unsqueezed);
+    auto k_rot = std::make_shared<internal::RoPE>(k_rope_args, config);
 
     return {q_rot, k_rot, {cos_unsqueezed, sin_unsqueezed}};
 }
@@ -834,7 +850,7 @@ ov::Output<ov::Node> make_rms_norm(
     // return mul;
 
     if (consts.count(key + ".weight")) {
-        std::cout << "make_rms_norm, use internal rms" << std::endl;
+        // std::cout << "make_rms_norm, use internal rms" << std::endl;
         auto weight_tensor = consts.at(key + ".weight");
         weight_tensor.set_shape(ov::Shape{1, 1, weight_tensor.get_shape()[0]});
         auto weights_const = std::make_shared<ov::op::v0::Constant>(
